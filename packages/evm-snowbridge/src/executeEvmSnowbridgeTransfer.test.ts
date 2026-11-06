@@ -1,5 +1,5 @@
 import type { TEvmTransferOptions } from '@paraspell/sdk-core'
-import { MissingParameterError, RoutingResolutionError } from '@paraspell/sdk-core'
+import { MissingParameterError, RoutingResolutionError, ValidationError } from '@paraspell/sdk-core'
 import type { PublicClient, WalletClient } from 'viem'
 import { createPublicClient, custom } from 'viem'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -43,7 +43,8 @@ describe('executeEvmSnowbridgeTransfer', () => {
   beforeEach(() => {
     waitForTransactionReceipt = vi.fn().mockResolvedValue({ status: 'success' })
     vi.mocked(createPublicClient).mockReturnValue({
-      waitForTransactionReceipt
+      waitForTransactionReceipt,
+      getChainId: vi.fn().mockResolvedValue(1)
     } as unknown as PublicClient)
 
     messageId = vi.fn().mockResolvedValue('0xmsg')
@@ -125,5 +126,19 @@ describe('executeEvmSnowbridgeTransfer', () => {
     await expect(executeEvmSnowbridgeTransfer(baseOptions())).rejects.toThrow(
       RoutingResolutionError
     )
+  })
+
+  it('throws ValidationError when the wallet is on a different chain than the transaction', async () => {
+    vi.mocked(createPublicClient).mockReturnValue({
+      waitForTransactionReceipt,
+      getChainId: vi.fn().mockResolvedValue(11155111)
+    } as unknown as PublicClient)
+
+    const signer = buildSigner()
+
+    await expect(executeEvmSnowbridgeTransfer(baseOptions({ signer }))).rejects.toThrow(
+      ValidationError
+    )
+    expect(signer.sendTransaction).not.toHaveBeenCalled()
   })
 })

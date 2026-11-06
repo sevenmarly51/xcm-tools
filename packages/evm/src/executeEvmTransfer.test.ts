@@ -3,7 +3,8 @@ import {
   getEvmExtensionOrThrow,
   MissingParameterError,
   registerEvmExtension,
-  UnsupportedOperationError
+  UnsupportedOperationError,
+  ValidationError
 } from '@paraspell/sdk-core'
 import type { Address, WalletClient } from 'viem'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -20,7 +21,12 @@ describe('@paraspell/evm', () => {
   const signer = {
     account,
     chain,
-    sendTransaction
+    sendTransaction,
+    transport: {
+      request: vi.fn(async ({ method }: { method: string }) =>
+        method === 'eth_chainId' ? '0x504' : '0x0'
+      )
+    }
   } as unknown as WalletClient
 
   const mockApi = {
@@ -93,6 +99,25 @@ describe('@paraspell/evm', () => {
     vi.mocked(buildEvmTransfer).mockRejectedValueOnce(new UnsupportedOperationError('nope'))
 
     await expect(executeEvmTransfer(baseOptions)).rejects.toThrow(UnsupportedOperationError)
+  })
+
+  it('throws ValidationError when the wallet is on a different chain than the transaction', async () => {
+    await import('./index')
+    const { executeEvmTransfer } = await import('./executeEvmTransfer')
+
+    const wrongChainSigner = {
+      ...signer,
+      transport: {
+        request: vi.fn(async ({ method }: { method: string }) =>
+          method === 'eth_chainId' ? '0xaa36a7' : '0x0'
+        )
+      }
+    } as unknown as WalletClient
+
+    await expect(executeEvmTransfer({ ...baseOptions, signer: wrongChainSigner })).rejects.toThrow(
+      ValidationError
+    )
+    expect(sendTransaction).not.toHaveBeenCalled()
   })
 
   it('leaves the registry populated for the whole session (no teardown)', () => {

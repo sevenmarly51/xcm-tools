@@ -1,6 +1,7 @@
 import type { TEvmTransferOptions } from '@paraspell/sdk-core'
 import { MissingParameterError } from '@paraspell/sdk-core'
 
+import { assertWalletChain } from './assertWalletChain'
 import { buildEvmTransfer } from './buildEvmTransfer'
 
 export const executeEvmTransfer = async <TApi, TRes, TSigner, TCustomChain extends string = never>(
@@ -17,6 +18,8 @@ export const executeEvmTransfer = async <TApi, TRes, TSigner, TCustomChain exten
   const sender = account.address
 
   const tx = await buildEvmTransfer({ ...options, sender })
+
+  await assertWalletChain(signer, tx)
 
   return signer.sendTransaction({
     ...tx,

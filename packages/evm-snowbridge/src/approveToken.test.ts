@@ -1,4 +1,4 @@
-import { MissingParameterError } from '@paraspell/sdk-core'
+import { MissingParameterError, ValidationError } from '@paraspell/sdk-core'
 import { type WalletClient } from 'viem'
 import { mainnet } from 'viem/chains'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -12,12 +12,19 @@ const ASSET_ID = '0x2222222222222222222222222222222222222222'
 const ACCOUNT = '0x3333333333333333333333333333333333333333'
 const TX_HASH = '0xdeadbeef'
 
+const chainTransport = (chainIdHex: string) => ({
+  request: vi.fn(async ({ method }: { method: string }) =>
+    method === 'eth_chainId' ? chainIdHex : '0x0'
+  )
+})
+
 const buildSigner = (overrides: Partial<WalletClient> = {}) =>
   ({
     sendTransaction: vi.fn().mockResolvedValue(TX_HASH),
     getAddresses: vi.fn().mockResolvedValue([]),
     account: { address: ACCOUNT },
     chain: { id: 1 },
+    transport: chainTransport('0x1'),
     ...overrides
   }) as unknown as WalletClient
 
@@ -72,5 +79,12 @@ describe('approveToken', () => {
     })
 
     await expect(approveToken(signer, 1n, 'WETH')).rejects.toThrow(MissingParameterError)
+  })
+
+  it('throws ValidationError when the wallet is on a different chain than the approval', async () => {
+    const signer = buildSigner({ transport: chainTransport('0xaa36a7') })
+
+    await expect(approveToken(signer, 1n, 'WETH')).rejects.toThrow(ValidationError)
+    expect(signer.sendTransaction).not.toHaveBeenCalled()
   })
 })

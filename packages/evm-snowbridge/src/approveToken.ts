@@ -1,6 +1,7 @@
 import { MissingParameterError } from '@paraspell/sdk-core'
 import type { Hash, WalletClient } from 'viem'
 
+import { assertWalletChain } from './assertWalletChain'
 import { buildApproveToken } from './buildApproveToken'
 
 export const approveToken = async (
@@ -17,6 +18,8 @@ export const approveToken = async (
   }
 
   const tx = buildApproveToken(symbol, amount)
+
+  await assertWalletChain(signer, tx)
 
   return signer.sendTransaction({
     ...tx,

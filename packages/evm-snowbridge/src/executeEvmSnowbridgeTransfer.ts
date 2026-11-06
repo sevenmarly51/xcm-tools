@@ -1,5 +1,5 @@
 import type { TEvmTransferOptions } from '@paraspell/sdk-core'
-import { MissingParameterError, RoutingResolutionError } from '@paraspell/sdk-core'
+import { MissingParameterError, RoutingResolutionError, ValidationError } from '@paraspell/sdk-core'
 import { createPublicClient, custom } from 'viem'
 
 import { buildSnowbridgeTransfer } from './buildSnowbridgeTransfer'
@@ -41,6 +41,13 @@ export const executeEvmSnowbridgeTransfer = async <
     },
     publicClient
   )
+
+  const walletChainId = await publicClient.getChainId()
+  if (tx.chainId !== undefined && walletChainId !== tx.chainId) {
+    throw new ValidationError(
+      `Wallet is connected to chainId ${walletChainId}, but the transaction targets chainId ${tx.chainId}. Switch the wallet network before executing.`
+    )
+  }
 
   const hash = await signer.sendTransaction({
     ...tx,
