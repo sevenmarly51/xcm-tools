@@ -23,6 +23,7 @@ import { serializeTransaction } from 'viem';
 
 import { assertChain, assertDestination } from '../utils/assertions.js';
 import { handleXcmApiError } from '../utils/error-handler.js';
+import { assertUserWsUrlsSafe, withTimeout } from '../utils/ws-url-guard.js';
 import { BatchXTransferDto } from './dto/XTransferBatchDto.js';
 import {
   DryRunPreviewDto,
@@ -91,11 +92,13 @@ export class XTransferService {
 
     const hasOptions = options && Object.keys(options).length > 0;
 
+    assertUserWsUrlsSafe(options);
+
     const sdkBuilder = Builder(hasOptions ? options : undefined);
     const finalBuilder = this.buildXTransfer(sdkBuilder, transfer);
 
     try {
-      return await executor(finalBuilder);
+      return await withTimeout(executor(finalBuilder));
     } catch (e) {
       return handleXcmApiError(e);
     } finally {

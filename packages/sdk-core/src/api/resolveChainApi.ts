@@ -4,6 +4,7 @@ import { getChainProvidersImpl } from '../chains/config'
 import { MissingChainApiError } from '../errors'
 import type { TApiOrUrl, TBuilderOptions, TFullCustomCtx, TUrl } from '../types'
 import { isConfig } from '../utils'
+import { assertSafeWsUrl } from '../utils/assertSafeWsUrl'
 
 export const resolveChainApi = <TApi, TCustomChain extends string = never>(
   config: TBuilderOptions<TApiOrUrl<TApi>> | undefined,
@@ -26,6 +27,8 @@ export const resolveChainApi = <TApi, TCustomChain extends string = never>(
   }
 
   if (typeof apiConfig === 'string' || apiConfig instanceof Array) {
+    const urls = apiConfig instanceof Array ? apiConfig : [apiConfig]
+    urls.forEach((url) => assertSafeWsUrl(url, isConfig(config) && config.development))
     return createApiInstance(apiConfig)
   }
 

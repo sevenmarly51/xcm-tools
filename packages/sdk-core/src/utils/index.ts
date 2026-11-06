@@ -2,6 +2,7 @@
 
 export * from './address'
 export * from './assertions'
+export * from './assertSafeWsUrl'
 export * from './asset'
 export * from './builder'
 export * from './chain'
